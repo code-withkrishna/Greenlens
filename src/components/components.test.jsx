@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
 import GradeCard from './GradeCard';
 import ScoreBreakdown from './ScoreBreakdown';
 import ReasonList from './ReasonList';
@@ -57,9 +56,9 @@ describe('ScoreBreakdown', () => {
     expect(screen.getByText('50')).toBeInTheDocument();
   });
 
-  it('shows helper text', () => {
+  it('shows section heading', () => {
     render(<ScoreBreakdown co2Score={70} waterScore={85} packagingScore={50} />);
-    expect(screen.getByText(/higher.*sustainable/i)).toBeInTheDocument();
+    expect(screen.getByText('Sustainability Breakdown')).toBeInTheDocument();
   });
 });
 

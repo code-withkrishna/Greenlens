@@ -1,4 +1,15 @@
+import { assertValidScoreResponse } from '../../shared/scoreSchema.js';
+
 export const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+async function readErrorDetail(response) {
+  try {
+    const errJson = await response.json();
+    return errJson.error || '';
+  } catch {
+    return response.text();
+  }
+}
 
 export async function scoreProduct(productData) {
   const response = await fetch('/api/score', {
@@ -10,33 +21,10 @@ export async function scoreProduct(productData) {
   });
 
   if (!response.ok) {
-    let detail = '';
-    try {
-      const errJson = await response.json();
-      detail = errJson.error || '';
-    } catch {
-      detail = await response.text();
-    }
+    const detail = await readErrorDetail(response);
     throw new Error(detail || `Scoring request failed (${response.status})`);
   }
 
   const parsed = await response.json();
-
-  const required = [
-    'grade',
-    'overall_score',
-    'co2_score',
-    'water_score',
-    'packaging_score',
-    'reasons',
-    'greener_swaps',
-  ];
-
-  for (const field of required) {
-    if (!(field in parsed)) {
-      throw new Error(`Invalid response: missing field "${field}"`);
-    }
-  }
-
-  return parsed;
+  return assertValidScoreResponse(parsed);
 }

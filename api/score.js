@@ -15,7 +15,7 @@ The JSON must follow this exact schema:
   ],
   "greener_swaps": [
     {
-      "name": "<product category description, e.g. \'Organic oat milk in cardboard carton\' or \'Loose-leaf tea, no individual bags\' — NOT a specific brand or product name>",
+      "name": "<product category description, e.g. 'Organic oat milk in cardboard carton' or 'Loose-leaf tea, no individual bags' — NOT a specific brand or product name>",
       "why": "<1 sentence explaining why this category is more sustainable than the scanned product>",
       "estimated_grade": "A" | "B" | "C"
     },
@@ -68,21 +68,7 @@ If any rules are violated, return a corrected JSON in the SAME schema. If all lo
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
-const REQUIRED_FIELDS = ['grade', 'overall_score', 'co2_score', 'water_score', 'packaging_score', 'reasons', 'greener_swaps'];
-
-function validateSchema(data) {
-  const errors = [];
-  for (const field of REQUIRED_FIELDS) {
-    if (!(field in data)) errors.push(`missing field "${field}"`);
-  }
-  if (data.grade && !['A', 'B', 'C', 'D', 'E', 'F'].includes(data.grade)) {
-    errors.push(`invalid grade "${data.grade}"`);
-  }
-  if (typeof data.overall_score !== 'number' || data.overall_score < 0 || data.overall_score > 100) {
-    errors.push('overall_score must be 0-100');
-  }
-  return errors;
-}
+import { getScoreSchemaErrors } from '../shared/scoreSchema.js';
 
 async function callGroq(messages, apiKey) {
   const controller = new AbortController();
@@ -116,7 +102,9 @@ async function callGroq(messages, apiKey) {
     return JSON.parse(clean);
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error('AI scoring timed out. Please try again.');
+    if (err.name === 'AbortError') {
+      throw new Error('AI scoring timed out. Please try again.', { cause: err });
+    }
     throw err;
   }
 }
@@ -162,7 +150,7 @@ Return ONLY the JSON object. No other text.`;
       apiKey
     );
 
-    const stage1Errors = validateSchema(firstPass);
+    const stage1Errors = getScoreSchemaErrors(firstPass);
     if (stage1Errors.length > 0) {
       return res.status(502).json({ error: `Invalid AI response: ${stage1Errors.join(', ')}` });
     }
@@ -188,7 +176,7 @@ Check for rule violations and return corrected JSON if needed.`;
         apiKey
       );
 
-      const stage2Errors = validateSchema(validated);
+      const stage2Errors = getScoreSchemaErrors(validated);
       // If validator returns a broken schema, fall back to stage 1 result
       finalScore = stage2Errors.length === 0 ? validated : firstPass;
     } catch {

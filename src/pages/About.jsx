@@ -1,3 +1,5 @@
+import { GRADE_CONFIG } from '../utils/gradeConfig';
+
 export default function About() {
   return (
     <div className="space-y-6 py-6" data-testid="about-page">
@@ -50,17 +52,16 @@ export default function About() {
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-base font-semibold text-gray-800">Grade scale</h2>
         <div className="space-y-1.5 text-xs">
-          {[
-            { grade: 'A', label: 'Excellent (85–100)', bg: '#EAF3DE', color: '#27500A' },
-            { grade: 'B', label: 'Good (70–84)', bg: '#C0DD97', color: '#27500A' },
-            { grade: 'C', label: 'Average (50–69)', bg: '#FAEEDA', color: '#633806' },
-            { grade: 'D', label: 'Poor (30–49)', bg: '#FAC775', color: '#633806' },
-            { grade: 'E', label: 'Very Poor (15–29)', bg: '#FCEBEB', color: '#A32D2D' },
-            { grade: 'F', label: 'Harmful (0–14)', bg: '#F7C1C1', color: '#791F1F' },
-          ].map(({ grade, label, bg, color }) => (
-            <div key={grade} className="flex items-center gap-3 rounded-lg px-3 py-2" style={{ backgroundColor: bg }}>
-              <span className="font-bold w-4" style={{ color }}>{grade}</span>
-              <span style={{ color }}>{label}</span>
+          {Object.entries(GRADE_CONFIG).map(([grade, config]) => (
+            <div
+              key={grade}
+              className="flex items-center gap-3 rounded-lg px-3 py-2"
+              style={{ backgroundColor: config.bg }}
+            >
+              <span className="font-bold w-4" style={{ color: config.color }}>{grade}</span>
+              <span style={{ color: config.color }}>
+                {config.label} ({config.range[0]}–{config.range[1]})
+              </span>
             </div>
           ))}
         </div>

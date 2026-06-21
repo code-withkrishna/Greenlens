@@ -1,10 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 
 vi.mock('axios');
-
-// Properly stub import.meta.env for Vitest
-vi.stubEnv('VITE_GROQ_API_KEY', 'test-groq-key');
 
 describe('fetchProduct (openFoodFacts)', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -79,62 +76,64 @@ describe('scoreProduct (groqScore)', () => {
     grade_label: 'Poor',
     reasons: ['Palm oil drives deforestation.', 'Ultra-processed (NOVA 4).', 'High sugar content.'],
     greener_swaps: [
-      { name: 'Pip & Nut Almond Butter', why: 'No palm oil.', estimated_grade: 'B' },
-      { name: 'Whole Earth Peanut Butter', why: 'Single ingredient.', estimated_grade: 'A' },
+      { name: 'Organic almond butter', why: 'No palm oil.', estimated_grade: 'B' },
+      { name: 'Whole grain peanut butter', why: 'Single ingredient.', estimated_grade: 'A' },
     ],
   };
 
-  // Groq returns OpenAI-compatible format: choices[0].message.content
-  const groqResponse = (content) => ({
-    data: { choices: [{ message: { content } }] },
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn());
   });
 
-  beforeEach(() => vi.clearAllMocks());
+  it('calls the serverless score endpoint with product data', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockScorePayload,
+    });
 
-  it('calls Groq endpoint with correct headers', async () => {
-    axios.post.mockResolvedValueOnce(groqResponse(JSON.stringify(mockScorePayload)));
     const { scoreProduct } = await import('./groqScore');
     await scoreProduct(mockProductData);
-    expect(axios.post).toHaveBeenCalledWith(
-      'https://api.groq.com/openai/v1/chat/completions',
-      expect.objectContaining({ model: 'llama-3.3-70b-versatile' }),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-groq-key',
-        }),
-      })
-    );
-  });
 
-  it('sends system prompt as a message role', async () => {
-    axios.post.mockResolvedValueOnce(groqResponse(JSON.stringify(mockScorePayload)));
-    const { scoreProduct } = await import('./groqScore');
-    await scoreProduct(mockProductData);
-    const body = axios.post.mock.calls[0][1];
-    expect(body.messages[0].role).toBe('system');
-    expect(body.messages[1].role).toBe('user');
+    expect(fetch).toHaveBeenCalledWith('/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productData: mockProductData }),
+    });
   });
 
   it('parses JSON response correctly', async () => {
-    axios.post.mockResolvedValueOnce(groqResponse(JSON.stringify(mockScorePayload)));
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockScorePayload,
+    });
+
     const { scoreProduct } = await import('./groqScore');
     const result = await scoreProduct(mockProductData);
+
     expect(result.grade).toBe('D');
     expect(result.overall_score).toBe(35);
     expect(result.reasons).toHaveLength(3);
     expect(result.greener_swaps).toHaveLength(2);
   });
 
-  it('strips markdown fences from response', async () => {
-    const wrapped = '```json\n' + JSON.stringify(mockScorePayload) + '\n```';
-    axios.post.mockResolvedValueOnce(groqResponse(wrapped));
+  it('throws when the API returns an error payload', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: async () => ({ error: 'Invalid AI response' }),
+    });
+
     const { scoreProduct } = await import('./groqScore');
-    const result = await scoreProduct(mockProductData);
-    expect(result.grade).toBe('D');
+    await expect(scoreProduct(mockProductData)).rejects.toThrow('Invalid AI response');
   });
 
   it('throws on invalid response missing required fields', async () => {
-    axios.post.mockResolvedValueOnce(groqResponse('{"grade":"D"}'));
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ grade: 'D' }),
+    });
+
     const { scoreProduct } = await import('./groqScore');
     await expect(scoreProduct(mockProductData)).rejects.toThrow('missing field');
   });

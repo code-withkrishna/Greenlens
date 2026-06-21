@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import Result from './Result';
 import About from './About';
@@ -94,7 +94,7 @@ describe('About page', () => {
       </MemoryRouter>
     );
     expect(screen.getByText('Scan a barcode')).toBeInTheDocument();
-    expect(screen.getByText('AI analysis')).toBeInTheDocument();
+    expect(screen.getByText('Two-stage AI analysis')).toBeInTheDocument();
     expect(screen.getByText('Your eco grade')).toBeInTheDocument();
   });
 
